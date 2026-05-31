@@ -16,5 +16,10 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    def model_post_init(self, __context) -> None:
+        url = self.database_url
+        if url.startswith("postgresql://"):
+            object.__setattr__(self, "database_url", url.replace("postgresql://", "postgresql+psycopg://", 1))
+
 
 settings = Settings()
