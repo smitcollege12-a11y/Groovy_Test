@@ -10,3 +10,4 @@ class LoginRequest(BaseModel):
 
 class AuthResponse(BaseModel):
     user: UserPublic
+    access_token: str

@@ -12,8 +12,8 @@ from app.schemas.user import UserCreate, UserPublic
 router = APIRouter()
 
 
-@router.post("/register", response_model=UserPublic, status_code=status.HTTP_201_CREATED)
-def register(payload: UserCreate, db: Session = Depends(get_db)) -> User:
+@router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
+def register(payload: UserCreate, response: Response, db: Session = Depends(get_db)) -> AuthResponse:
     existing = db.scalar(select(User).where(User.email == payload.email))
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
@@ -31,7 +31,17 @@ def register(payload: UserCreate, db: Session = Depends(get_db)) -> User:
     db.add(user)
     db.commit()
     db.refresh(user)
-    return user
+
+    token = create_access_token(str(user.id), user.role)
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        samesite="lax",
+        secure=True,
+        max_age=60 * 60,
+    )
+    return AuthResponse(user=user, access_token=token)
 
 
 @router.post("/login", response_model=AuthResponse)
@@ -46,10 +56,10 @@ def login(payload: LoginRequest, response: Response, db: Session = Depends(get_d
         value=token,
         httponly=True,
         samesite="lax",
-        secure=False,
+        secure=True,
         max_age=60 * 60,
     )
-    return AuthResponse(user=user)
+    return AuthResponse(user=user, access_token=token)
 
 
 @router.post("/logout", response_model=None)
